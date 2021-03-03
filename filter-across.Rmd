@@ -1,0 +1,97 @@
+---
+title: "Filter with across"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    df_print: paged
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") })
+---
+
+
+Must have latest version of dplyr.
+
+```{r setup, echo=T, results='hide', message=F, warning=F}
+library(tidyverse)
+```
+
+## Import
+
+```{r import}
+data <- read_csv("data/data.csv")
+
+data
+```
+
+## Variables
+
+```{r variables}
+color_values <- c("blue", "brown")
+my_color_cols <- c("color_a", "color_b", "color_c")
+```
+
+## Filter with across
+
+### Filter across to exclude rows
+
+This is the old `filter_at` version that excludes columns where target colors exist.
+
+```{r}
+data %>% 
+  filter_at(
+    vars(all_of(my_color_cols)),
+    all_vars(
+      !(. %in% color_values)
+    )
+  )
+```
+
+This is the `across()` version of this:
+
+```{r}
+data %>% 
+  filter(
+    across(all_of(my_color_cols),
+    ~ !(.x %in% color_values))
+  )
+```
+
+## Filter across columns to keep rows
+
+This used `if_any` to find rows where the color_values exist in any my_color_cols. `across()` doesn't work well with filter. [Read this](https://www.tidyverse.org/blog/2021/02/dplyr-1-0-4-if-any/).
+
+```{r}
+data %>% 
+  filter(
+    if_any(my_color_cols, ~ .x %in% color_values)
+  )
+```
+
+## Removing columns with NA
+
+This excludes rows when is.na is in any column. I think I need `all_of()` only if using filter? [Not quite same reference](https://dplyr.tidyverse.org/articles/colwise.html#filter).
+
+I'm not quite sure why this doesn't work with `if_any(my_color_cols)` like above.
+
+```{r}
+data %>% 
+ filter(across(all_of(my_color_cols), ~ !is.na(.x)))
+```
+
+When I first did it as `filter(across(my_color_cols, ~ !is.na(.x)))` I got this message:
+
+Note: Using an external vector in selections is ambiguous.
+ℹ Use `all_of(my_color_cols)` instead of `my_color_cols` to silence this message.
+ℹ See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+
+
+
+
+
+
+
+
+
+

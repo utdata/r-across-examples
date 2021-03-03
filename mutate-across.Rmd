@@ -1,0 +1,126 @@
+---
+title: "Across attempts"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    df_print: paged
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") })
+---
+
+Must have latest version of dplyr.
+
+```{r setup, echo=T, results='hide', message=F, warning=F}
+library(tidyverse)
+```
+
+## Using if_any to mutate multiple columns
+
+I want to classify rows in a new column based on any value in a list being present in any column in a list. But I want to do this using `across()` or `if_any()`.
+
+This is what I'm looking for, listing each column in the `case_when()`. I want to replace multiple lines with one `if_any(my_color_cols)`.
+
+```{r}
+color_values <- c("blue", "brown")
+color_cols <- c("hair_color", "skin_color", "eye_color")
+
+starwars %>% 
+  select(name, ends_with("color")) %>% 
+  mutate(
+    blue_brown = case_when(
+      hair_color %in% color_values ~ TRUE,
+      skin_color %in% color_values ~ TRUE,
+      eye_color %in% color_values ~ TRUE,
+      TRUE ~ FALSE
+    )
+  )
+```
+
+This is the `if_any()` rewrite of the above code.
+
+```{r}
+starwars %>% 
+  select(name, ends_with("color")) %>% 
+  mutate(
+    blue_brown = if_any(color_cols, ~ case_when(
+      .x %in% color_values ~ TRUE,
+      TRUE ~ FALSE
+    ))
+  )
+```
+
+---
+
+## Using smaller data set
+
+## Import
+
+```{r import}
+data <- read_csv("data/data.csv")
+
+data
+```
+
+## Variables
+
+```{r variables}
+my_color_cols <- c("color_a", "color_b", "color_c")
+```
+
+## Mutate with across
+
+### case_when method for mutate
+
+This works. It finds TRUE when either blue or brown is an any of the three columns.
+
+```{r case-when}
+data %>% 
+  mutate(
+    blue_red = case_when(
+    color_a %in% color_values ~ TRUE,
+    color_b %in% color_values ~ TRUE,
+    color_c %in% color_values ~ TRUE,
+    TRUE                     ~  FALSE
+    )
+  )
+```
+
+### if_any version of same task
+
+This uses `if_any()` to look across my_color_cols to find any value in color_valus and mark as TRUE in a new column.
+
+
+```{r}
+data %>% 
+  mutate(
+    blue_red = if_any(all_of(my_color_cols), ~ case_when(
+    .x %in% color_values ~ TRUE,
+    TRUE ~  FALSE
+    ))
+  )
+```
+
+It seems strange to use both `if_any(all_of(my_color_rows))`, but without it I got this warning:
+
+```text
+Note: Using an external vector in selections is ambiguous.
+ℹ Use `all_of(my_color_cols)` instead of `my_color_cols` to silence this message.
+ℹ See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+```
+
+So I'll try this one more time to see if I get the same error, but using a select-type value?
+
+```{r}
+data %>% 
+  mutate(
+    blue_red = if_any(starts_with("color"), ~ case_when(
+    .x %in% color_values ~ TRUE,
+    TRUE ~  FALSE
+    ))
+  )
+```
+
+Yes ... perhaps the key note there is "external vector" since originally I was calling my column names from a vector created outside the data frame.
+
